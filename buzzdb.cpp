@@ -248,6 +248,26 @@ public:
         }
     }
 
+        std::string encryptData(const char* plaintext, size_t length) {
+        AES_KEY encryptKey;
+        AES_set_encrypt_key(KEY, 128, &encryptKey);
+
+        std::string ciphertext(length, '\0');
+        AES_encrypt(reinterpret_cast<const unsigned char*>(plaintext),
+                    reinterpret_cast<unsigned char*>(&ciphertext[0]), &encryptKey);
+        return ciphertext;
+    }
+
+    std::string decryptData(const char* ciphertext, size_t length) {
+        AES_KEY decryptKey;
+        AES_set_decrypt_key(KEY, 128, &decryptKey);
+
+        std::string plaintext(length, '\0');
+        AES_decrypt(reinterpret_cast<const unsigned char*>(ciphertext),
+                    reinterpret_cast<unsigned char*>(&plaintext[0]), &decryptKey);
+        return plaintext;
+    }
+
     // Add a tuple, returns true if it fits, false otherwise.
     bool addTuple(std::unique_ptr<Tuple> tuple) {
 
