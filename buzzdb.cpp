@@ -754,10 +754,12 @@ private:
                     assert(slot_array[currentSlotIndex].offset != INVALID_VALUE);
                     const char* tuple_data = page_buffer + slot_array[currentSlotIndex].offset;
                     std::istringstream iss(std::string(tuple_data, slot_array[currentSlotIndex].length));
-                    currentTuple = Tuple::deserialize(iss);
-                    currentSlotIndex++; // Move to the next slot for the next call
-                    tuple_count++;
-                    return; // Tuple loaded successfully
+                    currentTuple = currentPage->loadTuple(currentSlotIndex);
+                    if (currentTuple) {
+                        currentSlotIndex++;
+                        tuple_count++;
+                        return; // Tuple loaded successfully
+                    }
                 }
                 currentSlotIndex++;
             }
