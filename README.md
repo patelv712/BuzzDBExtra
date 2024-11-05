@@ -1,1 +1,2 @@
-# Project Title
+# BuzzDB Extra Credit Project
+# Varun Patel
