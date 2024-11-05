@@ -255,7 +255,7 @@ public:
         std::string serializedTuple = tuple->serialize();
         std::string encryptedTuple = encryptData(serializedTuple.c_str(), serializedTuple.size());
         size_t tuple_size = encryptedTuple.size();
-        
+
         //std::cout << "Tuple size: " << tuple_size << " bytes\n";
         assert(tuple_size == 38);
 
@@ -313,6 +313,17 @@ public:
                     tuple_size);
 
         return true;
+    }
+    std::unique_ptr<Tuple> loadTuple(size_t index) {
+        Slot* slotArray = reinterpret_cast<Slot*>(page_data.get());
+        if (!slotArray[index].empty) {
+            const char* encryptedData = page_data.get() + slotArray[index].offset;
+            std::string decryptedData = decryptData(encryptedData, slotArray[index].length);
+            
+            std::istringstream iss(decryptedData);
+            return Tuple::deserialize(iss);
+        }
+        return nullptr;
     }
 
     void deleteTuple(size_t index) {
