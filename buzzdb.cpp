@@ -20,32 +20,34 @@
 #include <stdexcept>
 #include <cassert>
 
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+#include <cstring>
+
+
 enum FieldType { INT, FLOAT, STRING };
 
 // Define a basic Field variant class that can hold different types
 class Field {
 public:
+    static const unsigned char KEY[16];
     FieldType type;
     size_t data_length;
     std::unique_ptr<char[]> data;
 
 public:
+    Field() : type(STRING), data_length(0), data(nullptr) {}
     Field(int i) : type(INT) { 
         data_length = sizeof(int);
         data = std::make_unique<char[]>(data_length);
         std::memcpy(data.get(), &i, data_length);
     }
 
-    Field(float f) : type(FLOAT) { 
-        data_length = sizeof(float);
-        data = std::make_unique<char[]>(data_length);
-        std::memcpy(data.get(), &f, data_length);
-    }
-
     Field(const std::string& s) : type(STRING) {
-        data_length = s.size() + 1;  // include null-terminator
+        std::string encryptedData = encryptData(s.c_str(), s.size());
+        data_length = encryptedData.size();
         data = std::make_unique<char[]>(data_length);
-        std::memcpy(data.get(), s.c_str(), data_length);
+        std::memcpy(data.get(), encryptedData.c_str(), data_length);
     }
 
     Field& operator=(const Field& other) {
@@ -79,39 +81,58 @@ public:
         return std::string(data.get());
     }
 
-    std::string serialize() {
-        std::stringstream buffer;
-        buffer << type << ' ' << data_length << ' ';
-        if (type == STRING) {
-            buffer << data.get() << ' ';
-        } else if (type == INT) {
-            buffer << *reinterpret_cast<int*>(data.get()) << ' ';
-        } else if (type == FLOAT) {
-            buffer << *reinterpret_cast<float*>(data.get()) << ' ';
-        }
-        return buffer.str();
+    std::string encryptData(const char* plaintext, size_t length) {
+        AES_KEY encryptKey;
+        AES_set_encrypt_key(KEY, 128, &encryptKey);
+
+        std::string ciphertext(length, '\0');
+        AES_encrypt(reinterpret_cast<const unsigned char*>(plaintext),
+                    reinterpret_cast<unsigned char*>(&ciphertext[0]), &encryptKey);
+        return ciphertext;
+    }
+
+    std::string decryptData(const char* ciphertext, size_t length) {
+        AES_KEY decryptKey;
+        AES_set_decrypt_key(KEY, 128, &decryptKey);
+
+        std::string plaintext(length, '\0');
+        AES_decrypt(reinterpret_cast<const unsigned char*>(ciphertext),
+                    reinterpret_cast<unsigned char*>(&plaintext[0]), &decryptKey);
+        return plaintext;
     }
 
     void serialize(std::ofstream& out) {
         std::string serializedData = this->serialize();
         out << serializedData;
     }
+    std::string serialize() {
+        std::string encryptedData = encryptData(data.get(), data_length);
+        std::stringstream buffer;
+        buffer << type << ' ' << data_length << ' ' << encryptedData << ' ';
+        return buffer.str();
+    }
 
     static std::unique_ptr<Field> deserialize(std::istream& in) {
         int type; in >> type;
         size_t length; in >> length;
+        std::string encryptedData;
+        in >> encryptedData;
+        
+        Field temp; // Temporary Field instance to call decryptData
+        std::string decryptedData = temp.decryptData(encryptedData.c_str(), length);
+
         if (type == STRING) {
-            std::string val; in >> val;
-            return std::make_unique<Field>(val);
+            return std::make_unique<Field>(decryptedData);
         } else if (type == INT) {
-            int val; in >> val;
+            int val = *reinterpret_cast<const int*>(decryptedData.c_str());
             return std::make_unique<Field>(val);
         } else if (type == FLOAT) {
-            float val; in >> val;
+            float val = *reinterpret_cast<const float*>(decryptedData.c_str());
             return std::make_unique<Field>(val);
         }
         return nullptr;
     }
+
 
     // Clone method
     std::unique_ptr<Field> clone() const {
@@ -127,6 +148,7 @@ public:
         }
     }
 };
+const unsigned char Field::KEY[16] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 bool operator==(const Field& lhs, const Field& rhs) {
     if (lhs.type != rhs.type) return false; // Different types are never equal
