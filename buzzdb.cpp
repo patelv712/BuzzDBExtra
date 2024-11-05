@@ -252,9 +252,10 @@ public:
     bool addTuple(std::unique_ptr<Tuple> tuple) {
 
         // Serialize the tuple into a char array
-        auto serializedTuple = tuple->serialize();
-        size_t tuple_size = serializedTuple.size();
-
+        std::string serializedTuple = tuple->serialize();
+        std::string encryptedTuple = encryptData(serializedTuple.c_str(), serializedTuple.size());
+        size_t tuple_size = encryptedTuple.size();
+        
         //std::cout << "Tuple size: " << tuple_size << " bytes\n";
         assert(tuple_size == 38);
 
