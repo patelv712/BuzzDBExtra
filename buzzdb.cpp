@@ -329,7 +329,7 @@ public:
 
         // Copy serialized data into the page
         std::memcpy(page_data.get() + offset, 
-                    serializedTuple.c_str(), 
+                    encryptedTuple.c_str(), 
                     tuple_size);
 
         return true;
