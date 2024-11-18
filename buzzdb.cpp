@@ -26,6 +26,7 @@
 
 
 enum FieldType { INT, FLOAT, STRING };
+enum SensitivityLevel { LOW, MEDIUM, HIGH };
 
 // Define a basic Field variant class that can hold different types
 class Field {
